@@ -1,37 +1,62 @@
-// index.js — Backend Econya (Render)
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coach Éco - Econya</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="index.html" class="logo">Econya</a>
+        <div class="nav-links">
+            <a href="comparateur.html">Comparateur</a>
+            <a href="coach-eco.html" class="active">Coach Éco</a>
+            <a href="banque.html">Banque</a>
+            <a href="partenaires.html">Partenaires</a>
+            <a href="playbooks.html">Playbooks</a>
+        </div>
+    </nav>
 
-const express = require('express');
-const cors = require('cors');
+    <!-- Titre principal -->
+    <header class="hero">
+        <h1>Coach Éco</h1>
+        <p>Optimisez vos finances grâce à des analyses et recommandations personnalisées.</p>
+    </header>
 
-const app = express();
-const PORT = process.env.PORT || 3000; // Render fournit PORT
+    <!-- Section Synthèse -->
+    <section class="synthese">
+        <h2>Synthèse</h2>
+        <p>Analysez vos dépenses et comparez vos options pour économiser plus efficacement.</p>
+        
+        <div class="cta-row">
+            <a href="comparateur.html" class="btn">Comparer maintenant</a>
+            <a href="banque.html" class="btn ghost">Analyser mes dépenses</a>
+        </div>
+    </section>
 
-// Sécurité / compat Render
-app.set('trust proxy', 1);
+    <!-- Explications -->
+    <section class="how-it-works">
+        <h2>Comment ça marche ?</h2>
+        <ol>
+            <li>Connectez vos comptes bancaires de manière sécurisée.</li>
+            <li>Analysez vos revenus et dépenses.</li>
+            <li>Recevez des conseils personnalisés pour réduire vos coûts et optimiser vos finances.</li>
+        </ol>
+    </section>
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+    <!-- Badge backend -->
+    <div id="api-status">Vérification du backend...</div>
 
-// Routes simples
-app.get('/', (_req, res) => {
-  res.status(200).send('Econya Backend — OK');
-});
+    <!-- Pied de page -->
+    <footer>
+        <p>&copy; 2025 Econya. Tous droits réservés.</p>
+    </footer>
 
-// Santé (deux alias : /sante et /health)
-app.get(['/sante', '/health'], (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'econya-backend', ts: Date.now() });
-});
+    <!-- Scripts -->
+    <script src="assets/env.js"></script>
+    <script src="assets/main.js"></script>
+</body>
+</html>
 
-// Ping
-app.get('/ping', (_req, res) => res.type('text').send('pong'));
-
-// 404 propre
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
-
-// Lancement (important : écouter sur process.env.PORT)
-app.listen(PORT, () => {
-  console.log(`✅ Serveur démarré sur le port ${PORT}`);
-});

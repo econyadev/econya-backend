@@ -1,62 +1,122 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coach Éco - Econya</title>
-    <link rel="stylesheet" href="assets/style.css">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="nav">
-        <a href="index.html" class="logo">Econya</a>
-        <div class="nav-links">
-            <a href="comparateur.html">Comparateur</a>
-            <a href="coach-eco.html" class="active">Coach Éco</a>
-            <a href="banque.html">Banque</a>
-            <a href="partenaires.html">Partenaires</a>
-            <a href="playbooks.html">Playbooks</a>
-        </div>
-    </nav>
 
-    <!-- Titre principal -->
-    <header class="hero">
-        <h1>Coach Éco</h1>
-        <p>Optimisez vos finances grâce à des analyses et recommandations personnalisées.</p>
-    </header>
+// Backend Econya – API minimale + démos "banque"
+// Dépendances : express, cors, dotenv (déjà dans ton package.json)
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
 
-    <!-- Section Synthèse -->
-    <section class="synthese">
-        <h2>Synthèse</h2>
-        <p>Analysez vos dépenses et comparez vos options pour économiser plus efficacement.</p>
-        
-        <div class="cta-row">
-            <a href="comparateur.html" class="btn">Comparer maintenant</a>
-            <a href="banque.html" class="btn ghost">Analyser mes dépenses</a>
-        </div>
-    </section>
+const app  = express();
+const PORT = process.env.PORT || 3000;
 
-    <!-- Explications -->
-    <section class="how-it-works">
-        <h2>Comment ça marche ?</h2>
-        <ol>
-            <li>Connectez vos comptes bancaires de manière sécurisée.</li>
-            <li>Analysez vos revenus et dépenses.</li>
-            <li>Recevez des conseils personnalisés pour réduire vos coûts et optimiser vos finances.</li>
-        </ol>
-    </section>
+// ------------------------------------------------------------------
+// CORS + JSON
+// ------------------------------------------------------------------
+app.use(cors({ origin: "*", methods: ["GET"] }));
+app.use(express.json());
 
-    <!-- Badge backend -->
-    <div id="api-status">Vérification du backend...</div>
+// URL publique de ton backend (utile pour construire les liens mock OB)
+const PUBLIC_BASE =
+  process.env.PUBLIC_BASE || "https://econya-backend.onrender.com";
 
-    <!-- Pied de page -->
-    <footer>
-        <p>&copy; 2025 Econya. Tous droits réservés.</p>
-    </footer>
+// URL publique du site (pour un éventuel redirect depuis /ob/callback)
+const PUBLIC_SITE =
+  process.env.PUBLIC_SITE || "https://econya.fr";
 
-    <!-- Scripts -->
-    <script src="assets/env.js"></script>
-    <script src="assets/main.js"></script>
-</body>
-</html>
+// Version simple
+const VERSION = "0.3.3";
 
+// ------------------------------------------------------------------
+// SANTÉ / PING
+// ------------------------------------------------------------------
+app.get("/sante", (req, res) => {
+  res.json({ status: "ok", service: "econya-backend", ts: Date.now(), version: VERSION });
+});
+
+app.get("/ping", (req, res) => res.type("text").send("pong"));
+
+// ------------------------------------------------------------------
+// Données démo : comptes + transactions
+// (en prod, ces données viennent d'une base ou d’un agrégateur bancaire)
+// ------------------------------------------------------------------
+const DEMO_ACCOUNTS = [
+  { id: "cc",  name: "Compte courant", iban: "FR76 **** **** 1234", balance: 1245.32, currency: "EUR" },
+  { id: "la",  name: "Livret A",       iban: "FR76 **** **** 5678", balance:  980.00, currency: "EUR" }
+];
+
+// Quelques transactions démo (YYYY-MM pour filtrer)
+const DEMO_TX = [
+  { date: "2025-08-14", label: "Supermarché", amount: -45.90,  category: "Courses"    },
+  { date: "2025-08-13", label: "Salaire",     amount: 2000.00, category: "Revenus"    },
+  { date: "2025-08-10", label: "Café",        amount: -2.80,   category: "Sorties"    },
+  { date: "2025-07-28", label: "Internet",    amount: -29.99,  category: "Abonnements"},
+  { date: "2025-07-15", label: "Essence",     amount: -58.40,  category: "Transport"  }
+];
+
+// /mescomptes : renvoie la liste des comptes (démo)
+app.get("/mescomptes", (req, res) => {
+  res.json({ accounts: DEMO_ACCOUNTS });
+});
+
+// /transactions : ?month=YYYY-MM pour filtrer (facultatif)
+app.get("/transactions", (req, res) => {
+  const month = (req.query.month || "").trim(); // ex: "2025-08"
+  let tx = DEMO_TX;
+  if (/^\d{4}-\d{2}$/.test(month)) {
+    tx = DEMO_TX.filter(t => t.date.startsWith(month));
+  }
+  res.json({ month: month || null, items: tx });
+});
+
+// ------------------------------------------------------------------
+// Open Banking (mock) – parcours simplifié pour la démo
+// ------------------------------------------------------------------
+
+// mémoire locale pour représenter un “compte lié”
+let obLinked = false;
+
+// 1) /ob/start : construit l’URL du “fournisseur” fictif et la renvoie
+app.get("/ob/start", (req, res) => {
+  const callbackUrl = `${PUBLIC_BASE}/ob/callback`;
+  const providerUrl = `${PUBLIC_BASE}/ob/provider?cb=${encodeURIComponent(callbackUrl)}`;
+  res.json({ url: providerUrl });
+});
+
+// 2) /ob/provider : page HTML très simple représentant un fournisseur d’accès
+app.get("/ob/provider", (req, res) => {
+  const cb = req.query.cb || `${PUBLIC_BASE}/ob/callback`;
+  res.type("html").send(`<!doctype html>
+<html><head><meta charset="utf-8"><title>Fournisseur (démo)</title></head>
+<body style="font-family:system-ui;margin:40px">
+  <h1>Fournisseur bancaire (démo)</h1>
+  <p>Cette page simule le consentement à la connexion bancaire.</p>
+  <div style="display:flex;gap:12px;margin-top:16px">
+    <a href="${cb}?ok=1" style="padding:10px 14px;background:#0a7f3f;color:#fff;border-radius:8px;text-decoration:none">Autoriser</a>
+    <a href="${cb}?ok=0" style="padding:10px 14px;background:#bbb;color:#222;border-radius:8px;text-decoration:none">Refuser</a>
+  </div>
+</body></html>`);
+});
+
+// 3) /ob/callback : reçoit ok=1/0 et “marque” la liaison
+app.get("/ob/callback", (req, res) => {
+  obLinked = req.query.ok === "1";
+  // Tu peux rediriger vers ton site si tu veux une vraie UX :
+  // return res.redirect(`${PUBLIC_SITE}/bank-link.html?linked=${obLinked ? 1 : 0}`);
+  res.json({ linked: obLinked });
+});
+
+// (optionnel) statut “open banking”
+app.get("/ob/status", (req, res) => res.json({ linked: obLinked }));
+
+// ------------------------------------------------------------------
+// 404 JSON
+// ------------------------------------------------------------------
+app.use((req, res) => {
+  res.status(404).json({ error: "not found" });
+});
+
+// ------------------------------------------------------------------
+// Démarrage
+// ------------------------------------------------------------------
+app.listen(PORT, () => {
+  console.log(`✅ Econya backend v${VERSION} démarré sur le port ${PORT}`);
+});
